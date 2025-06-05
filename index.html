@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trình chỉnh sửa ảnh đơn giản</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      :root {
+        --primary-color: #4361ee;
+        --secondary-color: #3f37c9;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f5f7fa;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1000px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        color: var(--primary-color);
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      .canvas-container {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+      }
+
+      .canvas-wrapper {
+        flex: 1;
+        min-width: 300px;
+      }
+
+      canvas {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        max-width: 100%;
+        background: #f8f9fa
+          url('data:image/svg+xml;utf8,<svg width="20" height="20" xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10" fill="%23e9ecef"/><rect x="10" y="10" width="10" height="10" fill="%23e9ecef"/></svg>');
+      }
+
+      .btn {
+        font-size: 0.9rem;
+        padding: 5px 10px;
+        margin: 2px;
+      }
+
+      .btn-primary {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+      }
+
+      .btn-primary:hover {
+        background-color: var(--secondary-color);
+        border-color: var(--secondary-color);
+      }
+
+      .control-panel {
+        display: none;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+      }
+
+      .control-panel.active {
+        display: block;
+      }
+
+      .slider-container {
+        margin-bottom: 10px;
+      }
+
+      .file-upload {
+        border: 2px dashed #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 15px;
+        cursor: pointer;
+      }
+
+      .file-upload:hover {
+        border-color: var(--primary-color);
+      }
+
+      .tab-buttons {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+      }
+
+      .tab-btn {
+        flex: 1;
+        min-width: 120px;
+      }
+
+      @media (max-width: 768px) {
+        .canvas-wrapper {
+          min-width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1><i class="fas fa-image"></i> Trình chỉnh sửa ảnh</h1>
+
+      <div class="file-upload" id="uploadArea">
+        <i
+          class="fas fa-cloud-upload-alt fa-2x mb-2"
+          style="color: var(--primary-color)"
+        ></i>
+        <p>Kéo thả ảnh vào đây hoặc click để chọn</p>
+        <small class="text-muted">Hỗ trợ JPG, PNG, GIF (tối đa 5MB)</small>
+        <input type="file" id="upload" accept="image/*" class="d-none" />
+      </div>
+
+      <div class="canvas-container">
+        <div class="canvas-wrapper">
+          <p class="text-center"><small>Ảnh gốc</small></p>
+          <canvas id="originalCanvas"></canvas>
+        </div>
+        <div class="canvas-wrapper">
+          <p class="text-center"><small>Ảnh đã chỉnh sửa</small></p>
+          <canvas id="editedCanvas"></canvas>
+        </div>
+      </div>
+
+      <div class="tab-buttons">
+        <button
+          class="btn btn-primary tab-btn"
+          onclick="togglePanel('adjustPanel')"
+        >
+          <i class="fas fa-sliders-h"></i> Điều chỉnh
+        </button>
+        <button
+          class="btn btn-primary tab-btn"
+          onclick="togglePanel('actionPanel')"
+        >
+          <i class="fas fa-crop-alt"></i> Thao tác
+        </button>
+        <button
+          class="btn btn-primary tab-btn"
+          onclick="togglePanel('effectPanel')"
+        >
+          <i class="fas fa-magic"></i> Hiệu ứng
+        </button>
+      </div>
+
+      <!-- Adjust Panel (hidden by default) -->
+      <div id="adjustPanel" class="control-panel">
+        <div class="slider-container">
+          <label class="form-label"
+            ><i class="fas fa-sun"></i> Độ sáng:
+            <span id="brightnessValue">0</span></label
+          >
+          <input
+            type="range"
+            class="form-range"
+            id="brightness"
+            min="-100"
+            max="100"
+            value="0"
+          />
+        </div>
+        <div class="slider-container">
+          <label class="form-label"
+            ><i class="fas fa-adjust"></i> Độ tương phản:
+            <span id="contrastValue">0</span></label
+          >
+          <input
+            type="range"
+            class="form-range"
+            id="contrast"
+            min="-100"
+            max="100"
+            value="0"
+          />
+        </div>
+      </div>
+
+      <!-- Action Panel (hidden by default) -->
+      <div id="actionPanel" class="control-panel">
+        <button class="btn btn-primary" onclick="cropImage()">
+          <i class="fas fa-crop"></i> Cắt ảnh
+        </button>
+        <button class="btn btn-primary" onclick="rotateImage()">
+          <i class="fas fa-redo"></i> Xoay 90°
+        </button>
+        <button class="btn btn-primary" onclick="flipImage()">
+          <i class="fas fa-exchange-alt"></i> Lật ảnh
+        </button>
+        <button class="btn btn-primary" onclick="resetImage()">
+          <i class="fas fa-undo"></i> Đặt lại
+        </button>
+      </div>
+
+      <!-- Effect Panel (hidden by default) -->
+      <div id="effectPanel" class="control-panel">
+        <button class="btn btn-primary" onclick="applyBlur()">
+          <i class="fas fa-blur"></i> Làm mờ
+        </button>
+        <button class="btn btn-primary" onclick="applySharpen()">
+          <i class="fas fa-bolt"></i> Làm sắc nét
+        </button>
+        <button class="btn btn-primary" onclick="applyGrayscale()">
+          <i class="fas fa-moon"></i> Trắng đen
+        </button>
+      </div>
+
+      <div class="text-center mt-3">
+        <button class="btn btn-success" onclick="downloadImage()">
+          <i class="fas fa-download"></i> Tải ảnh xuống
+        </button>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // DOM elements
+      const upload = document.getElementById("upload");
+      const uploadArea = document.getElementById("uploadArea");
+      const originalCanvas = document.getElementById("originalCanvas");
+      const editedCanvas = document.getElementById("editedCanvas");
+      const originalCtx = originalCanvas.getContext("2d");
+      const editedCtx = editedCanvas.getContext("2d");
+      let image = new Image();
+      let activePanel = null;
+
+      // Initialize event listeners
+      function init() {
+        upload.addEventListener("change", handleUpload);
+        uploadArea.addEventListener("click", () => upload.click());
+        uploadArea.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          uploadArea.style.borderColor = "#4361ee"; // Màu hex của --primary-color
+        });
+        uploadArea.addEventListener("dragleave", () => {
+          uploadArea.style.borderColor = "#ddd";
+        });
+        uploadArea.addEventListener("drop", (e) => {
+          e.preventDefault();
+          uploadArea.style.borderColor = "#ddd";
+          if (e.dataTransfer.files.length) {
+            upload.files = e.dataTransfer.files;
+            handleUpload({ target: upload });
+          }
+        });
+
+        document
+          .getElementById("brightness")
+          .addEventListener("input", function () {
+            document.getElementById("brightnessValue").textContent = this.value;
+            applyFilters();
+          });
+
+        document
+          .getElementById("contrast")
+          .addEventListener("input", function () {
+            document.getElementById("contrastValue").textContent = this.value;
+            applyFilters();
+          });
+      }
+
+      // Handle image upload
+      function handleUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Show loading state
+        uploadArea.innerHTML =
+          '<i class="fas fa-spinner fa-spin fa-2x mb-2"></i><p>Đang tải ảnh...</p>';
+
+        image.onload = function () {
+          // Reset upload area
+          uploadArea.innerHTML = `
+                  <i class="fas fa-check-circle fa-2x mb-2" style="color: #2a9d8f;"></i>
+                  <p>${file.name}</p>
+                  <small class="text-muted">${(file.size / 1024 / 1024).toFixed(
+                    2
+                  )} MB</small>
+              `;
+
+          // Calculate canvas dimensions
+          const maxWidth = Math.min(image.width, 800);
+          const ratio = maxWidth / image.width;
+          const canvasWidth = maxWidth;
+          const canvasHeight = image.height * ratio;
+
+          // Set canvas dimensions
+          originalCanvas.width = editedCanvas.width = canvasWidth;
+          originalCanvas.height = editedCanvas.height = canvasHeight;
+
+          // Draw images
+          originalCtx.drawImage(image, 0, 0, canvasWidth, canvasHeight);
+          editedCtx.drawImage(image, 0, 0, canvasWidth, canvasHeight);
+
+          // Reset filters
+          document.getElementById("brightness").value = 0;
+          document.getElementById("contrast").value = 0;
+          document.getElementById("brightnessValue").textContent = "0";
+          document.getElementById("contrastValue").textContent = "0";
+
+          showAlert("Ảnh đã được tải lên thành công", "success");
+        };
+
+        image.onerror = function () {
+          uploadArea.innerHTML = `
+                  <i class="fas fa-exclamation-circle fa-2x mb-2" style="color: #e63946;"></i>
+                  <p>Lỗi khi tải ảnh</p>
+                  <button class="btn btn-sm btn-outline-primary mt-2" onclick="document.getElementById('upload').click()">
+                      Thử lại
+                  </button>
+              `;
+        };
+
+        image.src = URL.createObjectURL(file);
+      }
+
+      // Toggle control panels
+      function togglePanel(panelId) {
+        const panel = document.getElementById(panelId);
+
+        if (activePanel === panelId) {
+          panel.classList.remove("active");
+          activePanel = null;
+        } else {
+          // Hide all panels first
+          document.querySelectorAll(".control-panel").forEach((p) => {
+            p.classList.remove("active");
+          });
+
+          // Show selected panel
+          panel.classList.add("active");
+          activePanel = panelId;
+
+          if (!image.src) {
+            showAlert("Vui lòng tải lên ảnh trước", "warning");
+          }
+        }
+      }
+
+      // Apply brightness and contrast filters
+      function applyFilters() {
+        if (!image.src) return;
+
+        const brightness = parseInt(
+          document.getElementById("brightness").value
+        );
+        const contrast = parseInt(document.getElementById("contrast").value);
+
+        // Copy original image to edited canvas
+        editedCtx.clearRect(0, 0, editedCanvas.width, editedCanvas.height);
+        editedCtx.drawImage(originalCanvas, 0, 0);
+
+        const imageData = editedCtx.getImageData(
+          0,
+          0,
+          editedCanvas.width,
+          editedCanvas.height
+        );
+        const data = imageData.data;
+
+        // Apply brightness and contrast
+        const contrastFactor =
+          (259 * (contrast + 255)) / (255 * (259 - contrast));
+
+        for (let i = 0; i < data.length; i += 4) {
+          // Apply brightness
+          data[i] = data[i] + brightness;
+          data[i + 1] = data[i + 1] + brightness;
+          data[i + 2] = data[i + 2] + brightness;
+
+          // Apply contrast
+          data[i] = contrastFactor * (data[i] - 128) + 128;
+          data[i + 1] = contrastFactor * (data[i + 1] - 128) + 128;
+          data[i + 2] = contrastFactor * (data[i + 2] - 128) + 128;
+
+          // Clamp values between 0-255
+          data[i] = Math.max(0, Math.min(255, data[i]));
+          data[i + 1] = Math.max(0, Math.min(255, data[i + 1]));
+          data[i + 2] = Math.max(0, Math.min(255, data[i + 2]));
+        }
+
+        editedCtx.putImageData(imageData, 0, 0);
+      }
+
+      // Image manipulation functions
+      function cropImage() {
+        if (!image.src)
+          return showAlert("Vui lòng tải lên ảnh trước", "warning");
+
+        const cropWidth = editedCanvas.width / 2;
+        const cropHeight = editedCanvas.height / 2;
+
+        const tempCanvas = document.createElement("canvas");
+        const tempCtx = tempCanvas.getContext("2d");
+        tempCanvas.width = cropWidth;
+        tempCanvas.height = cropHeight;
+        tempCtx.drawImage(
+          editedCanvas,
+          0,
+          0,
+          cropWidth,
+          cropHeight,
+          0,
+          0,
+          cropWidth,
+          cropHeight
+        );
+
+        originalCanvas.width = editedCanvas.width = cropWidth;
+        originalCanvas.height = editedCanvas.height = cropHeight;
+
+        originalCtx.drawImage(tempCanvas, 0, 0);
+        editedCtx.drawImage(tempCanvas, 0, 0);
+
+        showAlert("Đã cắt ảnh thành công", "success");
+      }
+
+      function rotateImage() {
+        if (!image.src)
+          return showAlert("Vui lòng tải lên ảnh trước", "warning");
+
+        const tempCanvas = document.createElement("canvas");
+        const tempCtx = tempCanvas.getContext("2d");
+        tempCanvas.width = editedCanvas.height;
+        tempCanvas.height = editedCanvas.width;
+        tempCtx.translate(editedCanvas.height / 2, editedCanvas.width / 2);
+        tempCtx.rotate(Math.PI / 2);
+        tempCtx.drawImage(
+          editedCanvas,
+          -editedCanvas.width / 2,
+          -editedCanvas.height / 2
+        );
+
+        originalCanvas.width = editedCanvas.width = tempCanvas.width;
+        originalCanvas.height = editedCanvas.height = tempCanvas.height;
+
+        originalCtx.drawImage(tempCanvas, 0, 0);
+        editedCtx.drawImage(tempCanvas, 0, 0);
+
+        showAlert("Đã xoay ảnh 90 độ", "success");
+      }
+
+      function flipImage() {
+        if (!image.src)
+          return showAlert("Vui lòng tải lên ảnh trước", "warning");
+
+        editedCtx.clearRect(0, 0, editedCanvas.width, editedCanvas.height);
+        editedCtx.save();
+        editedCtx.scale(-1, 1);
+        editedCtx.drawImage(originalCanvas, -editedCanvas.width, 0);
+        editedCtx.restore();
+
+        showAlert("Đã lật ảnh theo chiều ngang", "success");
+      }
+
+      function resetImage() {
+        if (!image.src) return showAlert("Không có ảnh để đặt lại", "warning");
+
+        editedCtx.clearRect(0, 0, editedCanvas.width, editedCanvas.height);
+        editedCtx.drawImage(originalCanvas, 0, 0);
+
+        document.getElementById("brightness").value = 0;
+        document.getElementById("contrast").value = 0;
+        document.getElementById("brightnessValue").textContent = "0";
+        document.getElementById("contrastValue").textContent = "0";
+
+        showAlert("Đã đặt lại ảnh về trạng thái ban đầu", "success");
+      }
+
+      // Effect functions
+      function applyBlur() {
+        if (!image.src)
+          return showAlert("Vui lòng tải lên ảnh trước", "warning");
+
+        const imageData = editedCtx.getImageData(
+          0,
+          0,
+          editedCanvas.width,
+          editedCanvas.height
+        );
+        const data = imageData.data;
+        const tempData = new Uint8ClampedArray(data.length);
+
+        // Simple box blur
+        for (let y = 1; y < editedCanvas.height - 1; y++) {
+          for (let x = 1; x < editedCanvas.width - 1; x++) {
+            for (let c = 0; c < 3; c++) {
+              let sum = 0;
+              for (let ky = -1; ky <= 1; ky++) {
+                for (let kx = -1; kx <= 1; kx++) {
+                  const idx =
+                    ((y + ky) * editedCanvas.width + (x + kx)) * 4 + c;
+                  sum += data[idx];
+                }
+              }
+              const idx = (y * editedCanvas.width + x) * 4 + c;
+              tempData[idx] = sum / 9;
+            }
+            tempData[(y * editedCanvas.width + x) * 4 + 3] = 255;
+          }
+        }
+
+        for (let i = 0; i < data.length; i++) {
+          data[i] = tempData[i] || data[i];
+        }
+
+        editedCtx.putImageData(imageData, 0, 0);
+        showAlert("Đã áp dụng hiệu ứng làm mờ", "success");
+      }
+
+      function applySharpen() {
+        if (!image.src)
+          return showAlert("Vui lòng tải lên ảnh trước", "warning");
+
+        const imageData = editedCtx.getImageData(
+          0,
+          0,
+          editedCanvas.width,
+          editedCanvas.height
+        );
+        const data = imageData.data;
+        const tempData = new Uint8ClampedArray(data.length);
+
+        // Simple sharpen kernel
+        for (let y = 1; y < editedCanvas.height - 1; y++) {
+          for (let x = 1; x < editedCanvas.width - 1; x++) {
+            for (let c = 0; c < 3; c++) {
+              const idx = (y * editedCanvas.width + x) * 4 + c;
+              const center = data[idx] * 5;
+              const neighbors =
+                data[((y - 1) * editedCanvas.width + x) * 4 + c] +
+                data[((y + 1) * editedCanvas.width + x) * 4 + c] +
+                data[(y * editedCanvas.width + (x - 1)) * 4 + c] +
+                data[(y * editedCanvas.width + (x + 1)) * 4 + c];
+              tempData[idx] = Math.max(0, Math.min(255, center - neighbors));
+            }
+            tempData[(y * editedCanvas.width + x) * 4 + 3] = 255;
+          }
+        }
+
+        for (let i = 0; i < data.length; i++) {
+          data[i] = tempData[i] || data[i];
+        }
+
+        editedCtx.putImageData(imageData, 0, 0);
+        showAlert("Đã áp dụng hiệu ứng làm sắc nét", "success");
+      }
+
+      function applyGrayscale() {
+        if (!image.src)
+          return showAlert("Vui lòng tải lên ảnh trước", "warning");
+
+        const imageData = editedCtx.getImageData(
+          0,
+          0,
+          editedCanvas.width,
+          editedCanvas.height
+        );
+        const data = imageData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+          data[i] = avg;
+          data[i + 1] = avg;
+          data[i + 2] = avg;
+        }
+
+        editedCtx.putImageData(imageData, 0, 0);
+        showAlert("Đã áp dụng hiệu ứng trắng đen", "success");
+      }
+
+      function downloadImage() {
+        if (!image.src)
+          return showAlert("Không có ảnh để tải xuống", "warning");
+
+        const link = document.createElement("a");
+        link.download =
+          "edited-image-" + new Date().toISOString().slice(0, 10) + ".png";
+        link.href = editedCanvas.toDataURL("image/png");
+        link.click();
+      }
+
+      function showAlert(message, type) {
+        const alertDiv = document.createElement("div");
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.role = "alert";
+        alertDiv.innerHTML = `
+              ${message}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          `;
+
+        alertDiv.style.position = "fixed";
+        alertDiv.style.top = "20px";
+        alertDiv.style.right = "20px";
+        alertDiv.style.zIndex = "1000";
+        alertDiv.style.maxWidth = "300px";
+
+        document.body.appendChild(alertDiv);
+
+        setTimeout(() => {
+          alertDiv.classList.remove("show");
+          setTimeout(() => alertDiv.remove(), 150);
+        }, 3000);
+      }
+
+      // Initialize the app
+      init();
+    </script>
+  </body>
+</html>
